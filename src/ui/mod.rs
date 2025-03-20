@@ -10,6 +10,8 @@ use std::process::Command;
 use gtk::prelude::*;
 use log::{debug, warn, error};
 use pathbuftools::PathBufTools;
+use webkit2gtk::ffi::WebKitUserStyleSheet;
+use webkit2gtk::{UserContentManager, UserContentManagerExt, UserStyleSheet, WebContext, WebContextBuilder, WebContextExt, WebView, WebViewExt};
 
 use crate::assets::Assets;
 use crate::input::{InputFile, Config};

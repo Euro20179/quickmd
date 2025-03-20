@@ -13,6 +13,7 @@ use notify::{Watcher, RecursiveMode, DebouncedEvent, watcher};
 
 use crate::input::Config;
 use crate::markdown;
+use crate::markdown::Renderer;
 use crate::ui;
 
 /// A common trait for `glib::Sender` and `std::mpsc::Sender`.
@@ -51,7 +52,7 @@ impl Sender for mpsc::Sender<ui::Event> {
 /// A change to the main markdown file triggers a rerender and webview refresh. A change to the
 /// user-level configuration files is only going to trigger a refresh.
 ///
-pub fn init_update_loop<S>(renderer: markdown::Renderer, mut ui_sender: S)
+pub fn init_update_loop<TRender : Renderer + std::marker::Send + 'static, S>(renderer: TRender, mut ui_sender: S)
     where S: Sender + Send + 'static
 {
     thread::spawn(move || {
@@ -66,8 +67,8 @@ pub fn init_update_loop<S>(renderer: markdown::Renderer, mut ui_sender: S)
         };
 
         // Watch the parent directory so we can catch recreated files
-        let main_watch_path = renderer.canonical_md_path.parent().
-            unwrap_or(&renderer.canonical_md_path).
+        let main_watch_path = renderer.get_canonical_path().parent().
+            unwrap_or(&renderer.get_canonical_path()).
             to_owned();
 
         if let Err(e) = watcher.watch(&main_watch_path, RecursiveMode::NonRecursive) {
@@ -88,7 +89,7 @@ pub fn init_update_loop<S>(renderer: markdown::Renderer, mut ui_sender: S)
                 Ok(DebouncedEvent::Write(file) | DebouncedEvent::Create(file)) => {
                     debug!("File update/recreate detected: {}", file.display());
 
-                    if file == renderer.canonical_md_path {
+                    if file == renderer.get_canonical_path() {
                         match renderer.run() {
                             Ok(html) => {
                                 let _ = ui_sender.send(ui::Event::LoadHtml(html));
@@ -96,7 +97,7 @@ pub fn init_update_loop<S>(renderer: markdown::Renderer, mut ui_sender: S)
                             Err(e) => {
                                 error! {
                                     "Error rendering markdown ({}): {:?}",
-                                    renderer.canonical_md_path.display(), e
+                                    renderer.get_canonical_path().display(), e
                                 };
                             }
                         }

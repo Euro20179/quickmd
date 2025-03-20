@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::io::Write;
 
 use tempfile::NamedTempFile;
-use quickmd::markdown::Renderer;
+use quickmd::markdown::{MarkdownRenderer, Renderer};
 
 #[test]
 fn test_keeps_track_of_rendered_languages() {
@@ -21,7 +21,7 @@ fn test_keeps_track_of_rendered_languages() {
     writeln!(file, "```     rust").unwrap();
     writeln!(file, "```"         ).unwrap();
 
-    let renderer = Renderer::new(file.path().to_path_buf());
+    let renderer: MarkdownRenderer = Renderer::new(file.path().to_path_buf());
     let content = renderer.run().unwrap();
     let expected: HashSet<_> =
         vec!["vim", "ruby", "rust"].into_iter().map(String::from).collect();
@@ -42,7 +42,7 @@ fn test_renders_local_images() {
     writeln!(file, "![demo image](http://remote-image-01.png)").unwrap();
     writeln!(file, "![demo image](https://remote-image-02.png)").unwrap();
 
-    let renderer = Renderer::new(file.path().to_path_buf());
+    let renderer: MarkdownRenderer = Renderer::new(file.path().to_path_buf());
     let content = renderer.run().unwrap();
 
     assert!(content.html.contains(&format!("src=\"file://{}/local-image-01.png\"", tempdir.display())));

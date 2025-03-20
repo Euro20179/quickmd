@@ -23,8 +23,8 @@ use crate::input::Config;
 use crate::markdown::RenderedContent;
 
 const MAIN_JS:    &str  = include_str!("../res/js/main.js");
-const MAIN_CSS:   &str  = include_str!("../res/style/main.css");
-const GITHUB_CSS: &str  = include_str!("../res/style/github.css");
+pub const MAIN_CSS:   &str  = include_str!("../res/style/main.css");
+pub const GITHUB_CSS: &str  = include_str!("../res/style/github.css");
 const ICON_PNG:   &[u8] = include_bytes!("../res/icon.png");
 
 /// The version of highlight.js the app uses for code highlighting.
@@ -126,9 +126,6 @@ impl Assets {
                 HIGHLIGHT_JS_VERSION
             );
 
-            // [Unwrap] Writing to a String should not fail
-            writeln!(hl_tags, r#"<link rel="stylesheet" href="{}/styles/github.min.css" />"#, root_url).
-                unwrap();
             writeln!(hl_tags, r#"<script src="{}/highlight.min.js"></script>"#, root_url).
                 unwrap();
 

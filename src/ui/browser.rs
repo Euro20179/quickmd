@@ -6,17 +6,19 @@ use anyhow::anyhow;
 use gio::Cancellable;
 use gtk::prelude::*;
 use log::{debug, warn};
+use webkit2gtk::ffi::WebKitUserContentInjectedFrames;
 use webkit2gtk::traits::WebViewExt;
-use webkit2gtk::{WebContext, WebView};
+use webkit2gtk::{UserContentInjectedFrames, UserContentManager, UserContentManagerExt, UserStyleSheet, WebContext, WebContextExt, WebView, WebViewExtManual};
 
-use crate::assets::PageState;
+use crate::assets::{self, PageState};
 use crate::input::Config;
 
 /// A thin layer on top of [`webkit2gtk::WebView`] to put helper methods into.
 ///
 #[derive(Clone)]
 pub struct Browser {
-    webview: WebView,
+    ///The underlying webview of the browser
+    pub webview: WebView,
     config: Config,
 }
 
@@ -24,18 +26,26 @@ impl Browser {
     /// Construct a new instance with the provided `Config`.
     ///
     pub fn new(config: Config) -> anyhow::Result<Self> {
+        let content = UserContentManager::new();
+        let ss = UserStyleSheet::new(assets::GITHUB_CSS, UserContentInjectedFrames::AllFrames, webkit2gtk::UserStyleLevel::User, &[], &[]);
+        content.add_style_sheet(&ss);
+
         let web_context = WebContext::default().
             ok_or_else(|| anyhow!("Couldn't initialize GTK WebContext"))?;
-        let webview = WebView::with_context(&web_context);
+
+        let webview = WebView::new_with_context_and_user_content_manager(&web_context, &content);
         webview.set_zoom_level(config.zoom);
 
-        Ok(Browser { webview, config })
+        Ok(Browser { webview: webview.clone(), config })
     }
 
     /// Add this browser instance's webview to the given GTK Window.
     ///
     pub fn attach_to(&self, window: &gtk::Window) {
         window.add(&self.webview);
+    }
+
+    fn handle_https(&self) {
     }
 
     /// Delegates to [`webkit2gtk::WebView`]

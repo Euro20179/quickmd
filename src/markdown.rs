@@ -3,38 +3,76 @@
 //! Uses the [`pulldown_cmark`] crate with Github-flavored markdown options enabled. Extracts
 //! languages used in code blocks for highlighting purposes.
 
+use pulldown_cmark::{Event, Options, Parser, html};
+use regex::Regex;
+use std::collections::HashSet;
 use std::fs;
 use std::io;
-use std::path::{PathBuf, Path};
-use std::collections::HashSet;
-use regex::Regex;
-use pulldown_cmark::{Parser, Options, Event, html};
+use std::path::{Path, PathBuf};
+
+// pub struct Renderer {
+//     /// The original path given to the renderer.
+//     pub path: PathBuf,
+//
+//     /// The canonicalized path to use in file operations.
+//     pub canonical_path: PathBuf,
+// }
+
+/// Encapsulates a path and provides an interface to turn its contents into HTML.
+///
+pub trait Renderer {
+    /// Create a new renderer instance that wraps the given file.
+    ///
+    fn new(path: PathBuf) -> Self;
+
+    /// Turn the current contents of the file into HTML.
+    ///
+    fn run(&self) -> Result<RenderedContent, io::Error>;
+
+    /// Gets the path of the file that's being rendered
+    ///
+    fn get_path(&self) -> PathBuf;
+
+    /// Gets the canonical path of the file that's being rendered
+    ///
+    fn get_canonical_path(&self) -> PathBuf;
+}
 
 /// Encapsulates a markdown file and provides an interface to turn its contents into HTML.
 ///
-pub struct Renderer {
-    /// The original path given to the renderer.
-    pub md_path: PathBuf,
-
-    /// The canonicalized path to use in file operations.
-    pub canonical_md_path: PathBuf,
+pub struct MarkdownRenderer {
+    ///Path to the file
+    ///
+    pub path: PathBuf,
+    ///Full path to the file
+    ///
+    pub canonical_path: PathBuf,
 }
 
-impl Renderer {
-    /// Create a new renderer instance that wraps the given markdown file.
-    ///
-    pub fn new(md_path: PathBuf) -> Self {
-        let canonical_md_path = md_path.canonicalize().
-            unwrap_or_else(|_| md_path.clone());
+impl Renderer for MarkdownRenderer {
+    fn new(md_path: PathBuf) -> Self {
+        let canonical_md_path = md_path.canonicalize().unwrap_or_else(|_| md_path.clone());
 
-        Renderer { md_path, canonical_md_path }
+        MarkdownRenderer {
+            path: md_path,
+            canonical_path: canonical_md_path,
+        }
     }
 
-    /// Turn the current contents of the markdown file into HTML.
-    ///
-    pub fn run(&self) -> Result<RenderedContent, io::Error> {
-        let markdown = fs::read_to_string(&self.canonical_md_path)?;
-        let root_dir = self.canonical_md_path.parent().unwrap_or_else(|| Path::new(""));
+    fn get_path(&self) -> PathBuf {
+        return self.path.clone();
+    }
+
+    fn get_canonical_path(&self) -> PathBuf {
+        return self.canonical_path.clone();
+    }
+
+    fn run(&self) -> Result<RenderedContent, io::Error> {
+        let markdown = fs::read_to_string(&self.canonical_path)?;
+        let root_dir = self
+            .canonical_path
+            .parent()
+            .unwrap_or_else(|| Path::new(""));
 
         let re_absolute_url = Regex::new(r"^[a-z]+://").unwrap();
         let re_path_prefix = Regex::new(r"^(/|\./)?").unwrap();
@@ -48,17 +86,22 @@ impl Renderer {
 
         let mut languages = HashSet::new();
         let parser = parser.map(|mut event| {
-            use pulldown_cmark::{Tag, CodeBlockKind};
+            use pulldown_cmark::{CodeBlockKind, Tag};
 
             match &mut event {
                 Event::Start(Tag::CodeBlock(CodeBlockKind::Fenced(content))) => {
                     if content.len() > 0 {
                         languages.insert(content.to_string());
                     }
-                },
+                }
                 Event::Start(Tag::Image(_, url, _)) if !re_absolute_url.is_match(url) => {
-                    *url = format!("file://{}/{}", root_dir.display(), re_path_prefix.replace(url, "")).into();
-                },
+                    *url = format!(
+                        "file://{}/{}",
+                        root_dir.display(),
+                        re_path_prefix.replace(url, "")
+                    )
+                    .into();
+                }
                 _ => (),
             }
 

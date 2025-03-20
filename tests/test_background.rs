@@ -6,7 +6,7 @@ use std::time::Duration;
 use claim::assert_matches;
 
 use quickmd::ui;
-use quickmd::markdown::Renderer;
+use quickmd::markdown::{MarkdownRenderer, Renderer};
 use quickmd::background::init_update_loop;
 
 #[test]
@@ -15,7 +15,7 @@ fn test_update_loop_detects_file_updates() {
     let path = tempdir.path().join("file.md");
 
     fs::write(&path, "# Test").unwrap();
-    let renderer = Renderer::new(path.clone());
+    let renderer: MarkdownRenderer = Renderer::new(path.clone());
 
     let (sender, receiver) = mpsc::channel();
     init_update_loop(renderer, sender);
@@ -39,7 +39,7 @@ fn test_update_loop_detects_file_creation() {
     let path = tempdir.path().join("file.md");
 
     fs::write(&path, "# Test").unwrap();
-    let renderer = Renderer::new(path.clone());
+    let renderer: MarkdownRenderer = Renderer::new(path.clone());
 
     let (sender, receiver) = mpsc::channel();
     init_update_loop(renderer, sender);
@@ -68,7 +68,7 @@ fn test_update_loop_ignores_unrelated_files() {
     fs::write(&path, "# Test").unwrap();
     fs::write(&other_path, "# Other").unwrap();
 
-    let renderer = Renderer::new(path.clone());
+    let renderer: MarkdownRenderer = Renderer::new(path.clone());
 
     let (sender, receiver) = mpsc::channel();
     init_update_loop(renderer, sender);

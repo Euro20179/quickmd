@@ -8,6 +8,7 @@ use log::debug;
 use quickmd::assets::Assets;
 use quickmd::background;
 use quickmd::input::{Config, Options, InputFile};
+use quickmd::markdown::MarkdownRenderer;
 use quickmd::markdown::Renderer;
 use quickmd::ui;
 
@@ -59,7 +60,7 @@ fn launch_app(input_file: &Path, options: &Options, config: &Config) -> anyhow::
         return Err(error);
     }
 
-    let renderer = Renderer::new(md_path.to_path_buf());
+    let renderer: MarkdownRenderer = Renderer::new(md_path.to_path_buf());
     let assets = Assets::init(options.output_dir.clone())?;
 
     let mut ui = ui::App::init(config.clone(), input_file.clone(), assets)?;
